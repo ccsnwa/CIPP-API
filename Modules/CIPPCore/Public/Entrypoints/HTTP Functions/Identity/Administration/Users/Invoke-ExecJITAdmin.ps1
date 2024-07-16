@@ -171,14 +171,14 @@ Function Invoke-ExecJITAdmin {
             Set-CIPPUserJITAdmin @Parameters
         }
 
-        $DisableTaskBody = [pscustomobject]@{
+        $DisableTaskBody = @{
             TenantFilter  = $Request.Body.TenantFilter
             Name          = "JIT Admin ($($Request.Body.ExpireAction)): $Username"
             Command       = @{
                 value = 'Set-CIPPUserJITAdmin'
                 label = 'Set-CIPPUserJITAdmin'
             }
-            Parameters    = [pscustomobject]@{
+            Parameters    = @{
                 TenantFilter = $Request.Body.TenantFilter
                 User         = @{
                     'UserPrincipalName' = $Username

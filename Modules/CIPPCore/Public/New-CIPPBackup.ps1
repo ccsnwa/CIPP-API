@@ -40,15 +40,13 @@ function New-CIPPBackup {
                     $Result = Add-CIPPAzDataTableEntity @Table -entity $entity -Force
                     Write-LogMessage -user $request.headers.'x-ms-client-principal' -API $APINAME -message 'Created CIPP Backup' -Sev 'Debug'
                 } catch {
-                    $ErrorMessage = Get-CippException -Exception $_
-                    Write-LogMessage -user $request.headers.'x-ms-client-principal' -API $APINAME -message "Failed to create backup for CIPP: $($ErrorMessage.NormalizedError)" -Sev 'Error' -LogData $ErrorMessage
-                    [pscustomobject]@{'Results' = "Backup Creation failed: $($ErrorMessage.NormalizedError)" }
+                    Write-LogMessage -user $request.headers.'x-ms-client-principal' -API $APINAME -message "Failed to create backup for CIPP: $($_.Exception.Message)" -Sev 'Error'
+                    [pscustomobject]@{'Results' = "Backup Creation failed: $($_.Exception.Message)" }
                 }
 
             } catch {
-                $ErrorMessage = Get-CippException -Exception $_
-                Write-LogMessage -user $request.headers.'x-ms-client-principal' -API $APINAME -message "Failed to create backup: $($ErrorMessage.NormalizedError)" -Sev 'Error' -LogData $ErrorMessage
-                [pscustomobject]@{'Results' = "Backup Creation failed: $($ErrorMessage.NormalizedError)" }
+                Write-LogMessage -user $request.headers.'x-ms-client-principal' -API $APINAME -message "Failed to create backup: $($_.Exception.Message)" -Sev 'Error'
+                [pscustomobject]@{'Results' = "Backup Creation failed: $($_.Exception.Message)" }
             }
         }
 
@@ -75,9 +73,8 @@ function New-CIPPBackup {
                 $Result
             } catch {
                 $State = 'Failed to write backup to table storage'
-                $ErrorMessage = Get-CippException -Exception $_
-                Write-LogMessage -user $request.headers.'x-ms-client-principal' -API $APINAME -message "Failed to create backup for Conditional Access Policies: $($ErrorMessage.NormalizedError)" -Sev 'Error' -LogData $ErrorMessage
-                [pscustomobject]@{'Results' = "Backup Creation failed: $($ErrorMessage.NormalizedError)" }
+                Write-LogMessage -user $request.headers.'x-ms-client-principal' -API $APINAME -message "Failed to create backup for Conditional Access Policies: $($_.Exception.Message)" -Sev 'Error'
+                [pscustomobject]@{'Results' = "Backup Creation failed: $($_.Exception.Message)" }
             }
         }
 

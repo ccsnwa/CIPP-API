@@ -29,7 +29,6 @@ function Get-CIPPPerUserMFA {
             }
         }
     } catch {
-        $ErrorMessage = Get-NormalizedError -Message $_.Exception.Message
-        "Failed to get MFA State for $id : $ErrorMessage"
+        "Failed to get MFA State for $id : $_"
     }
 }

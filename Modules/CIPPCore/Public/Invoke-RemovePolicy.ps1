@@ -11,8 +11,7 @@ Function Invoke-RemovePolicy {
     param($Request, $TriggerMetadata)
 
     $APIName = $TriggerMetadata.FunctionName
-    $User = $request.headers.'x-ms-client-principal'
-    Write-LogMessage -user $User -API $APINAME -message 'Accessed this API' -Sev 'Debug'
+    Write-LogMessage -user $request.headers.'x-ms-client-principal' -API $APINAME -message 'Accessed this API' -Sev 'Debug'
 
     # Interact with query parameters or the body of the request.
     $TenantFilter = $Request.Query.TenantFilter
@@ -21,14 +20,13 @@ Function Invoke-RemovePolicy {
     try {
 
         #$unAssignRequest = New-GraphPostRequest -uri "https://graph.microsoft.com/beta/deviceManagement/configurationPolicies('$($policyId)')/assign" -type POST -Body '{"assignments":[]}' -tenant $TenantFilter
-        $null = New-GraphPostRequest -uri "https://graph.microsoft.com/beta/deviceManagement/$($Request.Query.URLName)('$($policyId)')" -type DELETE -tenant $TenantFilter
-        Write-LogMessage -user $User -API $APINAME -message "Deleted $policyId" -Sev 'Info' -tenant $TenantFilter
+        $GraphRequest = New-GraphPostRequest -uri "https://graph.microsoft.com/beta/deviceManagement/$($Request.Query.URLName)('$($policyId)')" -type DELETE -tenant $TenantFilter
+        Write-LogMessage -user $request.headers.'x-ms-client-principal' -API $APINAME -message "Deleted $policyId" -Sev 'Info' -tenant $TenantFilter
         $body = [pscustomobject]@{'Results' = 'Successfully deleted the policy' }
 
     } catch {
-        $ErrorMessage = Get-CippException -Exception $_
-        Write-LogMessage -user $User -API $APINAME -message "Could not delete policy $policyId. $($ErrorMessage.NormalizedError)" -Sev 'Error' -tenant $TenantFilter -LogData $ErrorMessage
-        $body = [pscustomobject]@{'Results' = "Could not delete policy: $($ErrorMessage.NormalizedError)" }
+        Write-LogMessage -user $request.headers.'x-ms-client-principal' -API $APINAME -message "Could not delete policy $policyId. $($_.Exception.Message)" -Sev 'Error' -tenant $TenantFilter
+        $body = [pscustomobject]@{'Results' = "Could not delete policy: $($_.Exception.Message)" }
 
     }
 

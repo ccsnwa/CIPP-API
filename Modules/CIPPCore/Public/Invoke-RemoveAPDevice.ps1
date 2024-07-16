@@ -20,20 +20,19 @@ Function Invoke-RemoveAPDevice {
     $Deviceid = $Request.Query.ID
 
     try {
-        if ($null -eq $TenantFilter -or $TenantFilter -eq 'null') {
-            $null = New-GraphPOSTRequest -uri "https://graph.microsoft.com/beta/deviceManagement/windowsAutopilotDeviceIdentities/$Deviceid" -type DELETE
+        if ($TenantFilter -eq $null -or $TenantFilter -eq 'null') {
+            $GraphRequest = New-GraphPOSTRequest -uri "https://graph.microsoft.com/beta/deviceManagement/windowsAutopilotDeviceIdentities/$Deviceid" -type DELETE
         } else {
-            $null = New-GraphPOSTRequest -uri "https://graph.microsoft.com/beta/deviceManagement/windowsAutopilotDeviceIdentities/$Deviceid" -tenantid $TenantFilter -type DELETE
+            $GraphRequest = New-GraphPOSTRequest -uri "https://graph.microsoft.com/beta/deviceManagement/windowsAutopilotDeviceIdentities/$Deviceid" -tenantid $TenantFilter -type DELETE
         }
         Write-LogMessage -user $request.headers.'x-ms-client-principal' -tenant $TenantFilter -API $APINAME -message "Deleted autopilot device $Deviceid" -Sev 'Info'
         $body = [pscustomobject]@{'Results' = 'Successfully deleted the autopilot device' }
     } catch {
-        $ErrorMessage = Get-CippException -Exception $_
-        Write-LogMessage -user $request.headers.'x-ms-client-principal' -tenant $TenantFilter -API $APINAME -message "Autopilot Delete API failed for $deviceid. The error is: $($ErrorMessage.NormalizedError)" -Sev 'Error' -LogData $ErrorMessage
-        $body = [pscustomobject]@{'Results' = "Failed to delete device: $($ErrorMessage.NormalizedError)" }
+        Write-LogMessage -user $request.headers.'x-ms-client-principal' -tenant $TenantFilter -API $APINAME -message "Autopilot Delete API failed for $deviceid. The error is: $($_.Exception.Message)" -Sev 'Error'
+        $body = [pscustomobject]@{'Results' = "Failed to delete device: $($_.Exception.Message)" }
     }
     #force a sync, this can give "too many requests" if deleleting a bunch of devices though.
-    $null = New-GraphPOSTRequest -uri 'https://graph.microsoft.com/beta/deviceManagement/windowsAutopilotSettings/sync' -tenantid $TenantFilter -type POST -body '{}'
+    $GraphRequest = New-GraphPOSTRequest -uri 'https://graph.microsoft.com/beta/deviceManagement/windowsAutopilotSettings/sync' -tenantid $TenantFilter -type POST -body '{}'
 
     # Associate values to output bindings by calling 'Push-OutputBinding'.
     Push-OutputBinding -Name Response -Value ([HttpResponseContext]@{

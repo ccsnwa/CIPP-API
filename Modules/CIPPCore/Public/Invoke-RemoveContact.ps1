@@ -11,9 +11,8 @@ Function Invoke-RemoveContact {
     param($Request, $TriggerMetadata)
 
     $APIName = $TriggerMetadata.FunctionName
+    Write-LogMessage -user $request.headers.'x-ms-client-principal' -API $APINAME -message 'Accessed this API' -Sev 'Debug'
     $Tenantfilter = $request.Query.tenantfilter
-    $User = $request.headers.'x-ms-client-principal'
-    Write-LogMessage -user $User -API $APINAME -message 'Accessed this API' -Sev 'Debug'
 
 
     $Params = @{
@@ -23,13 +22,12 @@ Function Invoke-RemoveContact {
     try {
         $Params = @{ Identity = $request.query.GUID }
 
-        $null = New-ExoRequest -tenantid $Tenantfilter -cmdlet 'Remove-MailContact' -cmdParams $params -UseSystemMailbox $true
+        $GraphRequest = New-ExoRequest -tenantid $Tenantfilter -cmdlet 'Remove-MailContact' -cmdParams $params -UseSystemMailbox $true
         $Result = "Deleted $($Request.query.guid)"
-        Write-LogMessage -user $User -API $APIName -tenant $tenantfilter -message "Deleted contact $($Request.query.guid)" -sev Debug
+        Write-LogMessage -API 'TransportRules' -tenant $tenantfilter -message "Deleted contact $($Request.query.guid)" -sev Debug
     } catch {
-        $ErrorMessage = Get-CippException -Exception $_
-        Write-LogMessage -user $User -API $APIName -tenant $tenantfilter -message "Failed to delete contact $($Request.query.guid). $($ErrorMessage.NormalizedError)" -sev Error -LogData $ErrorMessage
-        $Result = $ErrorMessage.NormalizedError
+        $ErrorMessage = Get-NormalizedError -Message $_.Exception
+        $Result = $ErrorMessage
     }
     # Associate values to output bindings by calling 'Push-OutputBinding'.
     Push-OutputBinding -Name Response -Value ([HttpResponseContext]@{

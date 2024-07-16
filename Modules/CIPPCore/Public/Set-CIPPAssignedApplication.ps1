@@ -114,8 +114,7 @@ function Set-CIPPAssignedApplication {
         }
         return "Assigned Application to $($GroupName)"
     } catch {
-        $ErrorMessage = Get-CippException -Exception $_
-        Write-LogMessage -user $ExecutingUser -API $APIName -message "Could not assign application to $GroupName. Error: $($ErrorMessage.NormalizedError)" -Sev 'Error' -tenant $TenantFilter -LogData $ErrorMessage
-        return "Could not assign application to $GroupName. Error: $($ErrorMessage.NormalizedError)"
+        Write-LogMessage -user $ExecutingUser -API $APIName -message "Could not assign application to $GroupName" -Sev 'Error' -tenant $TenantFilter -LogData (Get-CippException -Exception $_)
+        return "Could not assign application to $GroupName. Error: $($_.Exception.Message)"
     }
 }

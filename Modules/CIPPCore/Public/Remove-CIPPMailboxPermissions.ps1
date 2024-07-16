@@ -25,7 +25,7 @@ function Remove-CIPPMailboxPermissions {
                         $MailboxPerms = New-ExoRequest -Anchor $UserId -tenantid $Tenantfilter -cmdlet 'Set-Mailbox' -cmdParams @{Identity = $userid; GrantSendonBehalfTo = @{'@odata.type' = '#Exchange.GenericHashTable'; remove = $AccessUser }; }
                         if ($MailboxPerms -notlike '*completed successfully but no settings of*') {
                             Write-LogMessage -user $ExecutingUser -API $APIName -message "Removed SendOnBehalf permissions for $($AccessUser) from $($userid)'s mailbox." -Sev 'Info' -tenant $TenantFilter
-                            "Removed SendOnBehalf permissions for $($AccessUser) from $($userid)'s mailbox."
+                            "Removed SendOnBehalf permissions for $($AccessUser) from $($userid)'s mailbox." 
                         }
                     }
                     'SendAS' {
@@ -47,8 +47,7 @@ function Remove-CIPPMailboxPermissions {
         }
         return $Results
     } catch {
-        $ErrorMessage = Get-CippException -Exception $_
-        Write-LogMessage -user $ExecutingUser -API $APIName -message "Could not remove mailbox permissions for $($userid). Error: $($ErrorMessage.NormalizedError)" -Sev 'Error' -tenant $TenantFilter -LogData $ErrorMessage
-        return "Could not remove mailbox permissions for $($userid). Error: $($ErrorMessage.NormalizedError)"
+        Write-LogMessage -user $ExecutingUser -API $APIName -message "Could not remove mailbox permissions for $($userid). Error: $($_.Exception.Message)" -Sev 'Error' -tenant $TenantFilter
+        return "Could not remove mailbox permissions for $($userid). Error: $($_.Exception.Message)"
     }
 }

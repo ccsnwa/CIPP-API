@@ -68,36 +68,34 @@ function Test-CIPPAccessTenant {
                 GDAPRoles    = $GDAPRoles
                 MissingRoles = $MissingRoles
             }
-            Write-LogMessage -user $ExecutingUser -API $APINAME -tenant $tenant -message 'Tenant access check executed successfully' -Sev 'Info'
+            Write-LogMessage -user $request.headers.'x-ms-client-principal' -API $APINAME -tenant $tenant -message 'Tenant access check executed successfully' -Sev 'Info'
 
         } catch {
-            $ErrorMessage = Get-CippException -Exception $_
             @{
                 TenantName = "$($tenant)"
-                Status     = "Failed to connect: $($ErrorMessage.NormalizedError)"
+                Status     = "Failed to connect: $(Get-NormalizedError -message $_.Exception.Message)"
                 GDAP       = ''
             }
-            Write-LogMessage -user $ExecutingUser -API $APINAME -tenant $tenant -message "Tenant access check failed: $($ErrorMessage.NormalizedError) " -Sev 'Error' -LogData $ErrorMessage
+            Write-LogMessage -user $request.headers.'x-ms-client-principal' -API $APINAME -tenant $tenant -message "Tenant access check failed: $(Get-NormalizedError -message $_) " -Sev 'Error'
 
         }
 
         try {
-            $null = New-ExoRequest -tenantid $Tenant -cmdlet 'Get-OrganizationConfig' -ErrorAction Stop
+            $GraphRequest = New-ExoRequest -tenantid $Tenant -cmdlet 'Get-OrganizationConfig' -ErrorAction Stop
             @{
                 TenantName = "$($Tenant)"
                 Status     = 'Successfully connected to Exchange'
             }
 
         } catch {
-            $ErrorMessage = Get-CippException -Exception $_
             $ReportedError = ($_.ErrorDetails | ConvertFrom-Json -ErrorAction SilentlyContinue)
             $Message = if ($ReportedError.error.details.message) { $ReportedError.error.details.message } else { $ReportedError.error.innererror.internalException.message }
             if ($null -eq $Message) { $Message = $($_.Exception.Message) }
             @{
                 TenantName = "$($Tenant)"
-                Status     = "Failed to connect to Exchange: $($ErrorMessage.NormalizedError)"
+                Status     = "Failed to connect to Exchange: $(Get-NormalizedError -message $Message)"
             }
-            Write-LogMessage -user $ExecutingUser -API $APINAME -tenant $tenant -message "Tenant access check for Exchange failed: $($ErrorMessage.NormalizedError) " -Sev 'Error' -LogData $ErrorMessage
+            Write-LogMessage -user $request.headers.'x-ms-client-principal' -API $APINAME -tenant $tenant -message "Tenant access check for Exchange failed: $(Get-NormalizedError -message $Message) " -Sev 'Error'
         }
     }
     if (!$Tenants) { $results = 'Could not load the tenants list from cache. Please run permissions check first, or visit the tenants page.' }

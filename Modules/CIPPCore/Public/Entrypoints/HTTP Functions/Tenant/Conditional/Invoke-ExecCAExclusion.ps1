@@ -18,14 +18,14 @@ Function Invoke-ExecCAExclusion {
     }
     if ($Request.body.vacation -eq 'true') {
         $StartDate = $Request.body.StartDate
-        $TaskBody = [pscustomobject]@{
+        $TaskBody = @{
             TenantFilter  = $Request.body.TenantFilter
             Name          = "Add CA Exclusion Vacation Mode: $Username - $($Request.body.TenantFilter)"
             Command       = @{
                 value = 'Set-CIPPCAExclusion'
                 label = 'Set-CIPPCAExclusion'
             }
-            Parameters    = [pscustomobject]@{
+            Parameters    = @{
                 ExclusionType = 'Add'
                 UserID        = $Request.body.UserID
                 PolicyId      = $Request.body.PolicyId

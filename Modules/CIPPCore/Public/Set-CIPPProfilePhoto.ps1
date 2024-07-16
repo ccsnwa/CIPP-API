@@ -15,8 +15,7 @@ function Set-CIPPProfilePhoto {
         "Successfully set profile photo for $id"
         Write-LogMessage -user $executingUser -API 'Set-CIPPUserProfilePhoto' -message "Successfully set profile photo for $id" -Sev 'Info' -tenant $TenantFilter
     } catch {
-        $ErrorMessage = Get-CippException -Exception $_
-        "Failed to set profile photo for $id. Error: $($ErrorMessage.NormalizedError)"
-        Write-LogMessage -user $executingUser -API 'Set-CIPPUserProfilePhoto' -message "Failed to set profile photo for $id. Error: $($ErrorMessage.NormalizedError)" -Sev 'Error' -tenant $TenantFilter -LogData $ErrorMessage
+        "Failed to set profile photo for $id : $_"
+        Write-LogMessage -user $executingUser -API 'Set-CIPPUserProfilePhoto' -message "Failed to set profile photo for $id : $_" -Sev 'Error' -tenant $TenantFilter
     }
 }

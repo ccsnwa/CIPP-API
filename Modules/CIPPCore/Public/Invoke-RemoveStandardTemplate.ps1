@@ -11,8 +11,7 @@ Function Invoke-RemoveStandardTemplate {
     param($Request, $TriggerMetadata)
 
     $APIName = $TriggerMetadata.FunctionName
-    $User = $request.headers.'x-ms-client-principal'
-    Write-LogMessage -user $User -API $APINAME -message 'Accessed this API' -Sev 'Debug'
+    Write-LogMessage -user $request.headers.'x-ms-client-principal' -API $APINAME -message 'Accessed this API' -Sev 'Debug'
 
     $ID = $request.query.ID
     try {
@@ -21,12 +20,11 @@ Function Invoke-RemoveStandardTemplate {
         $Filter = "PartitionKey eq 'StandardsTemplate' and RowKey eq '$id'"
         $ClearRow = Get-CIPPAzDataTableEntity @Table -Filter $Filter -Property PartitionKey, RowKey
         Remove-AzDataTableEntity @Table -Entity $clearRow
-        Write-LogMessage -user $User -API $APINAME -message "Removed Standards Template named $($ClearRow.name) and id $($id)" -Sev 'Info'
+        Write-LogMessage -user $request.headers.'x-ms-client-principal' -API $APINAME -message "Removed Standards Template named $($ClearRow.name) and id $($id)" -Sev 'Info'
         $body = [pscustomobject]@{'Results' = 'Successfully removed Template' }
     } catch {
-        $ErrorMessage = Get-CippException -Exception $_
-        Write-LogMessage -user $User -API $APINAME -message "Failed to remove Standards template $ID. $($ErrorMessage.NormalizedError)" -Sev 'Error' -LogData $ErrorMessage
-        $body = [pscustomobject]@{'Results' = "Failed to remove template: $($ErrorMessage.NormalizedError)" }
+        Write-LogMessage -user $request.headers.'x-ms-client-principal' -API $APINAME -message "Failed to remove Standards template $ID. $($_.Exception.Message)" -Sev 'Error'
+        $body = [pscustomobject]@{'Results' = "Failed to remove template: $($_.Exception.Message)" }
     }
 
 

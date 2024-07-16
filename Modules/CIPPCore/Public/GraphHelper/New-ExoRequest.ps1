@@ -1,61 +1,23 @@
-function New-ExoRequest {
+function New-ExoRequest ($tenantid, $cmdlet, $cmdParams, $useSystemMailbox, $Anchor, $NoAuthCheck, $Select) {
     <#
     .FUNCTIONALITY
     Internal
     #>
-    [CmdletBinding()]
-    Param(
-        [Parameter(Mandatory = $true)]
-        [string]$cmdlet,
-
-        [Parameter(Mandatory = $false)]
-        $cmdParams,
-
-        [Parameter(Mandatory = $false)]
-        [string]$Select,
-
-        [Parameter(Mandatory = $false)]
-        [string]$Anchor,
-
-        [Parameter(Mandatory = $false)]
-        [bool]$useSystemMailbox,
-
-        [Parameter(Mandatory = $false)]
-        [string]$tenantid,
-
-        [Parameter(Mandatory = $false)]
-        [bool]$NoAuthCheck,
-
-        [switch]$Compliance,
-        [ValidateSet('v1.0', 'beta')]
-        [string]$ApiVersion = 'beta'
-    )
     if ((Get-AuthorisedRequest -TenantID $tenantid) -or $NoAuthCheck -eq $True) {
-
-        if ($Compliance.IsPresent) {
-            $Resource = 'https://ps.compliance.protection.outlook.com'
-            $token = Get-GraphToken -tenantid $tenantid -scope "$Resource/.default"
-            $token = @{ 'access_token' = $token.Authorization -replace 'Bearer ' }
-        } else {
-            $Resource = 'https://outlook.office365.com'
-            $token = Get-ClassicAPIToken -resource $Resource -Tenantid $tenantid
-        }
+        $token = Get-ClassicAPIToken -resource 'https://outlook.office365.com' -Tenantid $tenantid
+        $Tenant = Get-Tenants -IncludeErrors | Where-Object { $_.defaultDomainName -eq $tenantid -or $_.customerId -eq $tenantid }
 
         if ($cmdParams) {
-            #if cmdparams is a pscustomobject, convert to hashtable, otherwise leave as is
             $Params = $cmdParams
         } else {
             $Params = @{}
         }
-        $ExoBody = ConvertTo-Json -Depth 5 -Compress -InputObject @{
+        $ExoBody = ConvertTo-Json -Depth 5 -InputObject @{
             CmdletInput = @{
                 CmdletName = $cmdlet
                 Parameters = $Params
             }
         }
-
-        $Tenant = Get-Tenants -IncludeErrors | Where-Object { $_.defaultDomainName -eq $tenantid -or $_.customerId -eq $tenantid }
-
         if (!$Anchor) {
             if ($cmdparams.Identity) { $Anchor = $cmdparams.Identity }
             if ($cmdparams.anr) { $Anchor = $cmdparams.anr }
@@ -81,40 +43,21 @@ function New-ExoRequest {
                 }
             }
         }
-
-        Write-Verbose "Using $Anchor"
-
+        Write-Host "Using $Anchor"
         $Headers = @{
-            Authorization     = "Bearer $($token.access_token)"
-            Prefer            = 'odata.maxpagesize=1000'
-            'X-AnchorMailbox' = $anchor
-        }
+            Authorization             = "Bearer $($token.access_token)"
+            Prefer                    = 'odata.maxpagesize = 1000'
+            'parameter-based-routing' = $true
+            'X-AnchorMailbox'         = $anchor
 
-        # Compliance API trickery. Capture Location headers on redirect, extract subdomain and prepend to compliance URL
-        if ($Compliance.IsPresent) {
-            $URL = "$Resource/adminapi/$ApiVersion/$($tenant.customerId)/EXOBanner('AutogenSession')?Version=3.4.0"
-            Invoke-RestMethod -ResponseHeadersVariable ComplianceHeaders -MaximumRedirection 0 -ErrorAction SilentlyContinue -Uri $URL -Headers $Headers -SkipHttpErrorCheck | Out-Null
-            $RedirectedHost = ([System.Uri]($ComplianceHeaders.Location | Select-Object -First 1)).Host
-            $RedirectedHostname = '{0}.ps.compliance.protection.outlook.com' -f ($RedirectedHost -split '\.' | Select-Object -First 1)
-            $Resource = "https://$($RedirectedHostname)"
-            Write-Verbose "Redirecting to $Resource"
         }
-
         try {
-            if ($Select) { $Select = "?`$select=$Select" }
-            $URL = "$Resource/adminapi/$ApiVersion/$($tenant.customerId)/InvokeCommand$Select"
+            if ($Select) { $Select = "`$select=$Select" }
+            $URL = "https://outlook.office365.com/adminapi/beta/$($tenant.customerId)/InvokeCommand?$Select"
 
-            Write-Verbose "POST [ $URL ]"
-            $ReturnedData = do {
-                $ExoRequestParams = @{
-                    Uri         = $URL
-                    Method      = 'POST'
-                    Body        = $ExoBody
-                    Headers     = $Headers
-                    ContentType = 'application/json'
-                }
-
-                $Return = Invoke-RestMethod @ExoRequestParams
+            $ReturnedData =
+            do {
+                $Return = Invoke-RestMethod $URL -Method POST -Body $ExoBody -Headers $Headers -ContentType 'application/json; charset=utf-8'
                 $URL = $Return.'@odata.nextLink'
                 $Return
             } until ($null -eq $URL)
@@ -124,14 +67,11 @@ function New-ExoRequest {
             }
         } catch {
             $ErrorMess = $($_.Exception.Message)
-            try {
-                $ReportedError = ($_.ErrorDetails.Message | ConvertFrom-Json -ErrorAction SilentlyContinue)
-                $Message = if ($ReportedError.error.details.message) {
-                    $ReportedError.error.details.message
-                } elseif ($ReportedError.error.innererror) {
-                    $ReportedError.error.innererror.internalException.message
-                } elseif ($ReportedError.error.message) { $ReportedError.error.message }
-            } catch { $Message = $_.ErrorDetails }
+            $ReportedError = ($_.ErrorDetails | ConvertFrom-Json -ErrorAction SilentlyContinue)
+            $Message = if ($ReportedError.error.details.message) {
+                $ReportedError.error.details.message
+            } elseif ($ReportedError.error.message) { $ReportedError.error.message }
+            else { $ReportedError.error.innererror.internalException.message }
             if ($null -eq $Message) { $Message = $ErrorMess }
             throw $Message
         }
